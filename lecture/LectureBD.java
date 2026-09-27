@@ -3,7 +3,12 @@ import java.io.IOException;
 
 import java.io.InputStream;
 
+import java.sql.Connection;
+import java.sql.Date;
 import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
+import java.sql.Types;
 
 import java.util.ArrayList;
 
@@ -12,6 +17,8 @@ import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
 public class LectureBD {   
+   private Connection connection;
+
    public class Role {
       public Role(int i, String n, String p) {
          id = i;
@@ -365,14 +372,37 @@ public class LectureBD {
    }
    
    private void connectionBD() {
-      // On se connecte a la BD
+      try {
+         Class.forName("oracle.jdbc.OracleDriver");
+         connection = DriverManager.getConnection(
+               "jdbc:oracle:thin:@//bdlog660.ens.ad.etsmtl.ca/ORCLPDB1",
+               "EQUIPE107", "Qg1C6326");
+         connection.setAutoCommit(false);
+         System.out.println("Connexion a la BD reussie.");
+      }
+      catch (ClassNotFoundException e) {
+         throw new IllegalStateException("Le pilote Oracle est absent du classpath.", e);
+      }
+      catch (SQLException e) {
+         throw new IllegalStateException("Connexion a la BD impossible.", e);
+      }
    }
 
    public static void main(String[] args) {
+      if (args.length != 3) {
+         System.err.println("Usage: java LectureBD <personnes.xml> <films.xml> <clients.xml>");
+         System.exit(1);
+      }
       LectureBD lecture = new LectureBD();
       
       lecture.lecturePersonnes(args[0]);
       lecture.lectureFilms(args[1]);
       lecture.lectureClients(args[2]);
+      try {
+         lecture.connection.close();
+      }
+      catch (SQLException e) {
+         throw new IllegalStateException("Connexion a la BD impossible.", e);
+      }
    }
 }
