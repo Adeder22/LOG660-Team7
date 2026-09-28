@@ -4,9 +4,9 @@ import java.io.IOException;
 import java.io.InputStream;
 
 import java.sql.Connection;
+import java.sql.CallableStatement;
 import java.sql.Date;
 import java.sql.DriverManager;
-import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Types;
 
@@ -350,7 +350,12 @@ public class LectureBD {
    }   
    
    private void insertionPersonne(int id, String nom, String anniv, String lieu, String photo, String bio) {      
-      // On insere la personne dans la BD
+      try {
+         appelerProcedure("p_ajouterPersonne", id, nom, date(anniv), lieu, photo, bio);
+      }
+      catch (SQLException e) {
+         throw new IllegalStateException("Insertion de la personne impossible: " + id, e);
+      }
    }
    
    private void insertionFilm(int id, String titre, int annee,
@@ -359,7 +364,32 @@ public class LectureBD {
                            ArrayList<String> scenaristes,
                            ArrayList<Role> roles, String poster,
                            ArrayList<String> annonces) {         
-      // On le film dans la BD
+      try {
+         appelerProcedure("p_ajouterFilm", id, titre, annee, langue, duree,
+                          realisateurId, resume, poster);
+
+         for (String paysProduction : pays) {
+            appelerProcedure("p_ajouterPays", paysProduction);
+            appelerProcedure("p_ajouterFilmPays", id, paysProduction);
+         }
+
+         for (String genre : genres) {
+            appelerProcedure("p_ajouterGenre", genre);
+            appelerProcedure("p_ajouterFilmGenre", id, genre);
+         }
+
+         for (String scenariste : scenaristes)
+            appelerProcedure("p_ajouterFilmScenariste", id, scenariste);
+
+         for (Role role : roles)
+            appelerProcedure("p_ajouterFilmActeur", id, role.id, role.personnage);
+
+         for (String annonce : annonces)
+            appelerProcedure("p_ajouterBandeAnnonce", id, annonce);
+      }
+      catch (SQLException e) {
+         throw new IllegalStateException("Insertion du film impossible: " + id, e);
+      }
    }
    
    private void insertionClient(int id, String nomFamille, String prenom,
@@ -368,7 +398,57 @@ public class LectureBD {
                              String codePostal, String carte, String noCarte,
                              int expMois, int expAnnee, String motDePasse,
                              String forfait) {
-      // On le client dans la BD
+      int noCiv;
+      String rue;
+      String[] adresseSeparee = adresse.trim().split("\\s+", 2);
+
+      try {
+         noCiv = Integer.parseInt(adresseSeparee[0]);
+      }
+      catch (NumberFormatException e) {
+         throw new IllegalArgumentException("Adresse sans numéro civique: " + adresse, e);
+      }
+
+      rue = adresseSeparee.length == 2 ? adresseSeparee[1] : "";
+
+      try {
+         appelerProcedure("p_ajouterClient",
+                          id, nomFamille, prenom, courriel, tel, date(anniv),
+                          motDePasse, noCiv, rue, ville, province, codePostal,
+                          forfait, carte, noCarte, expMois, expAnnee, "000");
+      }
+      catch (SQLException e) {
+         throw new IllegalStateException("Insertion du client impossible: " + id, e);
+      }
+   }
+
+   private Date date(String valeur) {
+      return valeur == null || valeur.trim().isEmpty() ? null : Date.valueOf(valeur.trim());
+   }
+
+   private void appelerProcedure(String nom, Object... parametres) throws SQLException {
+      StringBuilder appel = new StringBuilder("{call ").append(nom).append('(');
+      for (int i = 0; i < parametres.length; i++) {
+         if (i > 0)
+            appel.append(',');
+         appel.append('?');
+      }
+      appel.append(")}");
+
+      try (CallableStatement statement = connection.prepareCall(appel.toString())) {
+         for (int i = 0; i < parametres.length; i++) {
+            Object parametre = parametres[i];
+            if (parametre == null)
+               statement.setNull(i + 1, Types.VARCHAR);
+            else if (parametre instanceof Integer)
+               statement.setInt(i + 1, (Integer) parametre);
+            else if (parametre instanceof Date)
+               statement.setDate(i + 1, (Date) parametre);
+            else
+               statement.setString(i + 1, parametre.toString());
+         }
+         statement.execute();
+      }
    }
    
    private void connectionBD() {
@@ -399,6 +479,7 @@ public class LectureBD {
       lecture.lectureFilms(args[1]);
       lecture.lectureClients(args[2]);
       try {
+         lecture.connection.commit();
          lecture.connection.close();
       }
       catch (SQLException e) {
