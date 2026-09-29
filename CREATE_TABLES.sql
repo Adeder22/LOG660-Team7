@@ -177,7 +177,7 @@ CREATE TABLE Film_Scenariste (
 
 --- Liste des triggers
 CREATE OR REPLACE TRIGGER carte_credit_expiree
-BEFORE INSERT OR UPDATE ON carteCredit
+BEFORE UPDATE ON carteCredit
 FOR EACH ROW
 BEGIN
     IF :NEW.expAnnee * 100 + :NEW.expMois
@@ -306,3 +306,13 @@ BEGIN
     END IF;
 END;
 /
+INSERT INTO Forfait (codeForfait, nomForfait, prix, locationMax, dureeMax)
+VALUES ('D', 'Débutant', 5, 1, 10);
+
+INSERT INTO Forfait (codeForfait, nomForfait, prix, locationMax, dureeMax)
+VALUES ('I', 'Intermédiaire', 10, 5, 30);
+
+INSERT INTO Forfait (codeForfait, nomForfait, prix, locationMax, dureeMax)
+VALUES ('A', 'Avancé', 15, 10, NULL);
+
+COMMIT;

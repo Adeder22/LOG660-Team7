@@ -349,12 +349,29 @@ public class LectureBD {
       }
    }   
    
-   private void insertionPersonne(int id, String nom, String anniv, String lieu, String photo, String bio) {      
-      try {
-         appelerProcedure("p_ajouterPersonne", id, nom, date(anniv), lieu, photo, bio);
+   private void insertionPersonne(int id, String nom, String anniv, String lieu, String photo, String bio) {
+      String bioRes = "";
+      if (bio != null && bio.length() > 4000) {
+         bioRes = bio.split("",4001)[0];
+      }
+      String sql = "BEGIN INSERT INTO Personne "
+                 + "(noPersonne, nom, dateNaissance, lieuNaissance, photo, biographie) "
+                 + "VALUES (?, ?, ?, ?, ?, ?); END;";
+      try (CallableStatement statement = connection.prepareCall(sql)) {
+         statement.setInt(1, id);
+         statement.setString(2, nom);
+         if (anniv == null || anniv.trim().isEmpty())
+            statement.setNull(3, Types.DATE);
+         else
+            statement.setDate(3, Date.valueOf(anniv.trim()));
+         statement.setString(4, lieu);
+         statement.setString(5, photo);
+         statement.setString(6, bioRes);
+         statement.execute();
+         System.out.println("Personne inséré: " + id);
       }
       catch (SQLException e) {
-         throw new IllegalStateException("Insertion de la personne impossible: " + id, e);
+         throw new IllegalStateException("Insertion de la personne impossible.", e);
       }
    }
    
@@ -363,33 +380,81 @@ public class LectureBD {
                            ArrayList<String> genres, String realisateurNom, int realisateurId,
                            ArrayList<String> scenaristes,
                            ArrayList<Role> roles, String poster,
-                           ArrayList<String> annonces) {         
-      try {
-         appelerProcedure("p_ajouterFilm", id, titre, annee, langue, duree,
-                          realisateurId, resume, poster);
-
-         for (String paysProduction : pays) {
-            appelerProcedure("p_ajouterPays", paysProduction);
-            appelerProcedure("p_ajouterFilmPays", id, paysProduction);
-         }
-
-         for (String genre : genres) {
-            appelerProcedure("p_ajouterGenre", genre);
-            appelerProcedure("p_ajouterFilmGenre", id, genre);
-         }
-
-         for (String scenariste : scenaristes)
-            appelerProcedure("p_ajouterFilmScenariste", id, scenariste);
-
-         for (Role role : roles)
-            appelerProcedure("p_ajouterFilmActeur", id, role.id, role.personnage);
-
-         for (String annonce : annonces)
-            appelerProcedure("p_ajouterBandeAnnonce", id, annonce);
+                           ArrayList<String> annonces) {
+      String procedure = "{call p_ajouterFilm(?,?,?,?,?,?,?,?,?,?,?)}";
+      try (CallableStatement statement = connection.prepareCall(procedure)) {
+         statement.setInt(1, id);
+         statement.setString(2, titre);
+         if (annee < 0)
+            statement.setNull(3, Types.NUMERIC);
+         else
+            statement.setInt(3, annee);
+         statement.setString(4, langue);
+         if (duree < 0)
+            statement.setNull(5, Types.NUMERIC);
+         else
+            statement.setInt(5, duree);
+         statement.setInt(6, realisateurId);
+         statement.setString(7, resume);
+         statement.setString(8, poster);
+         statement.setString(9, genres.isEmpty() ? null : genres.get(0));
+         statement.setString(10, pays.isEmpty() ? null : pays.get(0));
+         statement.setString(11, annonces.isEmpty() ? null : annonces.get(0));
+         statement.execute();
+         System.out.println("Film inséré: " + id);
       }
       catch (SQLException e) {
-         throw new IllegalStateException("Insertion du film impossible: " + id, e);
+         throw new IllegalStateException("Insertion du film impossible.", e);
       }
+//
+//      try {
+//         for (int i = 1; i < genres.size(); i++) {
+//            try (CallableStatement statement = connection.prepareCall(
+//                  "BEGIN INSERT INTO Film_Genre (noFilm, typeGenre) VALUES (?, ?); END;")) {
+//               statement.setInt(1, id);
+//               statement.setString(2, genres.get(i));
+//               statement.execute();
+//            }
+//         }
+//         for (int i = 1; i < pays.size(); i++) {
+//            try (CallableStatement statement = connection.prepareCall(
+//                  "BEGIN INSERT INTO Film_Pays (noFilm, nomPays) VALUES (?, ?); END;")) {
+//               statement.setInt(1, id);
+//               statement.setString(2, pays.get(i));
+//               statement.execute();
+//            }
+//         }
+//         for (int i = 1; i < annonces.size(); i++) {
+//            try (CallableStatement statement = connection.prepareCall(
+//                  "BEGIN INSERT INTO Bandes_Annonces (noFilm, url) VALUES (?, ?); END;")) {
+//               statement.setInt(1, id);
+//               statement.setString(2, annonces.get(i));
+//               statement.execute();
+//            }
+//         }
+//         for (Role role : roles) {
+//            try (CallableStatement statement = connection.prepareCall(
+//                  "BEGIN INSERT INTO Film_Acteurs (noFilm, noPersonne, personnage) "
+//                + "VALUES (?, ?, ?); END;")) {
+//               statement.setInt(1, id);
+//               statement.setInt(2, role.id);
+//               statement.setString(3, role.personnage);
+//               statement.execute();
+//            }
+//         }
+//         for (String scenariste : scenaristes) {
+//            try (CallableStatement statement = connection.prepareCall(
+//                  "BEGIN INSERT INTO Film_Scenariste (noFilm, noPersonne) "
+//                + "SELECT ?, noPersonne FROM Personne WHERE nom = ?; END;")) {
+//               statement.setInt(1, id);
+//               statement.setString(2, scenariste);
+//               statement.execute();
+//            }
+//         }
+//      }
+//      catch (SQLException e) {
+//         throw new IllegalStateException("Insertion des associations du film impossible.", e);
+//      }
    }
    
    private void insertionClient(int id, String nomFamille, String prenom,
@@ -398,56 +463,45 @@ public class LectureBD {
                              String codePostal, String carte, String noCarte,
                              int expMois, int expAnnee, String motDePasse,
                              String forfait) {
+      String[] adresseSeparee = adresse.trim().split("\\s+", 2);
       int noCiv;
       String rue;
-      String[] adresseSeparee = adresse.trim().split("\\s+", 2);
-
       try {
          noCiv = Integer.parseInt(adresseSeparee[0]);
       }
       catch (NumberFormatException e) {
          throw new IllegalArgumentException("Adresse sans numéro civique: " + adresse, e);
       }
-
       rue = adresseSeparee.length == 2 ? adresseSeparee[1] : "";
 
-      try {
-         appelerProcedure("p_ajouterClient",
-                          id, nomFamille, prenom, courriel, tel, date(anniv),
-                          motDePasse, noCiv, rue, ville, province, codePostal,
-                          forfait, carte, noCarte, expMois, expAnnee, "000");
+      String procedure = "{call p_ajouterClient(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)}";
+      try (CallableStatement statement = connection.prepareCall(procedure)) {
+         statement.setInt(1, id);
+         statement.setString(2, nomFamille);
+         statement.setString(3, prenom);
+         statement.setString(4, courriel);
+         statement.setString(5, tel);
+         if (anniv == null || anniv.trim().isEmpty())
+            statement.setNull(6, Types.DATE);
+         else
+            statement.setDate(6, Date.valueOf(anniv.trim()));
+         statement.setString(7, motDePasse);
+         statement.setInt(8, noCiv);
+         statement.setString(9, rue);
+         statement.setString(10, ville);
+         statement.setString(11, province);
+         statement.setString(12, codePostal);
+         statement.setString(13, forfait);
+         statement.setString(14, carte);
+         statement.setString(15, noCarte);
+         statement.setInt(16, expMois);
+         statement.setInt(17, expAnnee);
+         statement.setString(18, "000");
+         statement.execute();
+         System.out.println("Client inséré: " + id);
       }
       catch (SQLException e) {
-         throw new IllegalStateException("Insertion du client impossible: " + id, e);
-      }
-   }
-
-   private Date date(String valeur) {
-      return valeur == null || valeur.trim().isEmpty() ? null : Date.valueOf(valeur.trim());
-   }
-
-   private void appelerProcedure(String nom, Object... parametres) throws SQLException {
-      StringBuilder appel = new StringBuilder("{call ").append(nom).append('(');
-      for (int i = 0; i < parametres.length; i++) {
-         if (i > 0)
-            appel.append(',');
-         appel.append('?');
-      }
-      appel.append(")}");
-
-      try (CallableStatement statement = connection.prepareCall(appel.toString())) {
-         for (int i = 0; i < parametres.length; i++) {
-            Object parametre = parametres[i];
-            if (parametre == null)
-               statement.setNull(i + 1, Types.VARCHAR);
-            else if (parametre instanceof Integer)
-               statement.setInt(i + 1, (Integer) parametre);
-            else if (parametre instanceof Date)
-               statement.setDate(i + 1, (Date) parametre);
-            else
-               statement.setString(i + 1, parametre.toString());
-         }
-         statement.execute();
+         throw new IllegalStateException("Insertion du client impossible.", e.getNextException());
       }
    }
    
@@ -476,8 +530,11 @@ public class LectureBD {
       LectureBD lecture = new LectureBD();
       
       lecture.lecturePersonnes(args[0]);
-      lecture.lectureFilms(args[1]);
+      System.out.println("Insertion Personnes reussie.");
+//      lecture.lectureFilms(args[1]);
+//      System.out.println("Insertion Films reussie.");
       lecture.lectureClients(args[2]);
+      System.out.println("Insertion Clients reussie.");
       try {
          lecture.connection.commit();
          lecture.connection.close();
