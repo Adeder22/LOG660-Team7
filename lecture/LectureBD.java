@@ -3,13 +3,9 @@ import java.io.IOException;
 
 import java.io.InputStream;
 
-import java.sql.Connection;
-import java.sql.CallableStatement;
-import java.sql.Date;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Types;
+import java.sql.*;
 
+import java.text.DateFormat;
 import java.util.ArrayList;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -295,10 +291,15 @@ public class LectureBD {
                
                if (parser.getName().equals("client") && id >= 0)
                {
-                  insertionClient(batchStatement, id,nomFamille,prenom,courriel,tel,
-                             anniv,adresse,ville,province,
-                             codePostal,carte,noCarte, 
-                             expMois,expAnnee,motDePasse,forfait);               
+                  try {
+                     insertionClient(batchStatement, id,nomFamille,prenom,courriel,tel,
+                                anniv,adresse,ville,province,
+                                codePostal,carte,noCarte,
+                                expMois,expAnnee,motDePasse,forfait);
+                  }
+                  catch (SQLException e) {
+                     System.out.println("Insertion du client impossible: " + id);
+                  }
                                     
                   nomFamille = null;
                   prenom = null;
@@ -358,7 +359,6 @@ public class LectureBD {
             
             eventType = parser.next();            
          }
-         batchStatement.executeBatch();
          }
       }
       catch (XmlPullParserException e) {
@@ -368,7 +368,8 @@ public class LectureBD {
          System.out.println("IOException while parsing " + nomFichier); 
       }
       catch (SQLException e) {
-         throw new IllegalStateException("Insertion des clients impossible.", e);
+         System.out.println("Insertion des clients impossible.");
+//         throw new IllegalStateException("Insertion des clients impossible.", e);
       }
    }   
    
@@ -384,7 +385,7 @@ public class LectureBD {
       if (anniv == null || anniv.trim().isEmpty())
          statement.setNull(3, Types.DATE);
       else
-         statement.setDate(3, Date.valueOf(anniv.trim()));
+         statement.setDate(3, Date.valueOf(anniv));
       statement.setString(4, lieu);
       statement.setString(5, photo);
       statement.setString(6, bioRes);
@@ -417,55 +418,6 @@ public class LectureBD {
       statement.setString(11, annonces.isEmpty() ? null : annonces.get(0));
       statement.addBatch();
       System.out.println("Film ajouté au lot: " + id);
-//
-//      try {
-//         for (int i = 1; i < genres.size(); i++) {
-//            try (CallableStatement statement = connection.prepareCall(
-//                  "BEGIN INSERT INTO Film_Genre (noFilm, typeGenre) VALUES (?, ?); END;")) {
-//               statement.setInt(1, id);
-//               statement.setString(2, genres.get(i));
-//               statement.execute();
-//            }
-//         }
-//         for (int i = 1; i < pays.size(); i++) {
-//            try (CallableStatement statement = connection.prepareCall(
-//                  "BEGIN INSERT INTO Film_Pays (noFilm, nomPays) VALUES (?, ?); END;")) {
-//               statement.setInt(1, id);
-//               statement.setString(2, pays.get(i));
-//               statement.execute();
-//            }
-//         }
-//         for (int i = 1; i < annonces.size(); i++) {
-//            try (CallableStatement statement = connection.prepareCall(
-//                  "BEGIN INSERT INTO Bandes_Annonces (noFilm, url) VALUES (?, ?); END;")) {
-//               statement.setInt(1, id);
-//               statement.setString(2, annonces.get(i));
-//               statement.execute();
-//            }
-//         }
-//         for (Role role : roles) {
-//            try (CallableStatement statement = connection.prepareCall(
-//                  "BEGIN INSERT INTO Film_Acteurs (noFilm, noPersonne, personnage) "
-//                + "VALUES (?, ?, ?); END;")) {
-//               statement.setInt(1, id);
-//               statement.setInt(2, role.id);
-//               statement.setString(3, role.personnage);
-//               statement.execute();
-//            }
-//         }
-//         for (String scenariste : scenaristes) {
-//            try (CallableStatement statement = connection.prepareCall(
-//                  "BEGIN INSERT INTO Film_Scenariste (noFilm, noPersonne) "
-//                + "SELECT ?, noPersonne FROM Personne WHERE nom = ?; END;")) {
-//               statement.setInt(1, id);
-//               statement.setString(2, scenariste);
-//               statement.execute();
-//            }
-//         }
-//      }
-//      catch (SQLException e) {
-//         throw new IllegalStateException("Insertion des associations du film impossible.", e);
-//      }
    }
    
    private void insertionClient(CallableStatement statement, int id, String nomFamille, String prenom,
@@ -493,7 +445,7 @@ public class LectureBD {
       if (anniv == null || anniv.trim().isEmpty())
          statement.setNull(6, Types.DATE);
       else
-         statement.setDate(6, Date.valueOf(anniv.trim()));
+         statement.setDate(6, Date.valueOf(anniv));
       statement.setString(7, motDePasse);
       statement.setInt(8, noCiv);
       statement.setString(9, rue);
@@ -506,7 +458,7 @@ public class LectureBD {
       statement.setInt(16, expMois);
       statement.setInt(17, expAnnee);
       statement.setString(18, "000");
-      statement.addBatch();
+      statement.executeUpdate();
       System.out.println("Client ajouté au lot: " + id);
    }
    
@@ -538,8 +490,8 @@ public class LectureBD {
       System.out.println("Insertion Personnes reussie.");
 //      lecture.lectureFilms(args[1]);
 //      System.out.println("Insertion Films reussie.");
-      lecture.lectureClients(args[2]);
-      System.out.println("Insertion Clients reussie.");
+//      lecture.lectureClients(args[2]);
+//      System.out.println("Insertion Clients reussie.");
       try {
          lecture.connection.commit();
          lecture.connection.close();
