@@ -134,7 +134,7 @@ public class LectureBD {
                     realisateurId = -1;
 
             try (PreparedStatement batchStatement = connection.prepareCall(
-                    "{call p_ajouterFilm(?,?,?,?,?,?,?,?,?,?,?)}")) {
+                    "{call p_ajouterFilm(?,?,?,?,?,?,?,?)}")) {
                 while (eventType != XmlPullParser.END_DOCUMENT) {
                     if (eventType == XmlPullParser.START_TAG) {
                         tag = parser.getName();
@@ -372,14 +372,57 @@ public class LectureBD {
             statement.setNull(5, Types.NUMERIC);
         else
             statement.setInt(5, duree);
-        statement.setInt(6, realisateurId);
+        if (realisateurId < 0)
+            statement.setNull(6, Types.NUMERIC);
+        else
+            statement.setInt(6, realisateurId);
         statement.setString(7, resume);
         statement.setString(8, poster);
-        statement.setString(9, genres.isEmpty() ? null : genres.get(0));
-        statement.setString(10, pays.isEmpty() ? null : pays.get(0));
-        statement.setString(11, annonces.isEmpty() ? null : annonces.get(0));
-        statement.addBatch();
-        System.out.println("Film ajouté au lot: " + id);
+        statement.executeUpdate();
+
+        try (PreparedStatement genreStatement = connection.prepareCall(
+                     "{call p_ajouterFilmGenre(?,?)}");
+             PreparedStatement paysStatement = connection.prepareCall(
+                     "{call p_ajouterFilmPays(?,?)}");
+             PreparedStatement annonceStatement = connection.prepareCall(
+                     "{call p_ajouterBandeAnnonce(?,?)}");
+             PreparedStatement acteurStatement = connection.prepareCall(
+                     "{call p_ajouterFilmActeurs(?,?,?)}");
+             PreparedStatement scenaristeStatement = connection.prepareCall(
+                     "{call p_ajouterFilmScenariste(?,?)}")) {
+            for (String genre : genres) {
+                genreStatement.setInt(1, id);
+                genreStatement.setString(2, genre);
+                genreStatement.executeUpdate();
+            }
+
+            for (String paysProduction : pays) {
+                paysStatement.setInt(1, id);
+                paysStatement.setString(2, paysProduction);
+                paysStatement.executeUpdate();
+            }
+
+            for (String annonce : annonces) {
+                annonceStatement.setInt(1, id);
+                annonceStatement.setString(2, annonce);
+                annonceStatement.executeUpdate();
+            }
+
+            for (Role role : roles) {
+                acteurStatement.setInt(1, id);
+                acteurStatement.setInt(2, role.id);
+                acteurStatement.setString(3, role.personnage);
+                acteurStatement.executeUpdate();
+            }
+
+            for (String scenariste : scenaristes) {
+                scenaristeStatement.setInt(1, id);
+                scenaristeStatement.setString(2, scenariste);
+                scenaristeStatement.executeUpdate();
+            }
+        }
+
+        System.out.println("Film ajouté: " + id);
     }
 
     private void insertionClient(PreparedStatement statement, int id, String nomFamille, String prenom,
@@ -448,10 +491,10 @@ public class LectureBD {
 
         lecture.lecturePersonnes(args[0]);
         System.out.println("Insertion Personnes reussie.");
-//      lecture.lectureFilms(args[1]);
-//      System.out.println("Insertion Films reussie.");
-        lecture.lectureClients(args[2]);
-        System.out.println("Insertion Clients reussie.");
+      lecture.lectureFilms(args[1]);
+      System.out.println("Insertion Films reussie.");
+//        lecture.lectureClients(args[2]);
+//        System.out.println("Insertion Clients reussie.");
         long end = System.nanoTime();
         System.out.println("Temps : " + (end - start) / 1_000_000.0 + " ms");
         try {
