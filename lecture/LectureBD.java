@@ -489,8 +489,8 @@ public class LectureBD {
       System.out.println("Insertion Personnes reussie.");
 //      lecture.lectureFilms(args[1]);
 //      System.out.println("Insertion Films reussie.");
-//      lecture.lectureClients(args[2]);
-//      System.out.println("Insertion Clients reussie.");
+      lecture.lectureClients(args[2]);
+      System.out.println("Insertion Clients reussie.");
       try {
          lecture.connection.commit();
          lecture.connection.close();
