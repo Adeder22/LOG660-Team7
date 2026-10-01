@@ -7,6 +7,7 @@ DROP TABLE Client;
 DROP TABLE Employe;
 DROP TABLE Usager;
 DROP TABLE Forfait;
+DROP TABLE Personne;
 
 --- Creation de nos tables
 --- Note: la colonne tel accepte uniquement le format suivant : 000-000-0000
@@ -198,6 +199,29 @@ BEGIN
     END IF;
 END;
 /
+
+CREATE OR REPLACE PROCEDURE p_ajouterPersonne (
+    p_noPersonne    IN Personne.noPersonne%TYPE,
+    p_nom           IN Personne.nom%TYPE,
+    p_dateNaissance IN Personne.dateNaissance%TYPE,
+    p_lieuNaissance IN Personne.lieuNaissance%TYPE,
+    p_photo         IN Personne.photo%TYPE,
+    p_biographie    IN Personne.biographie%TYPE
+) AS
+    v_personneExiste NUMBER;
+
+BEGIN
+    SELECT COUNT(*) INTO v_personneExiste FROM Personne WHERE noPersonne = p_noPersonne;
+
+    IF v_personneExiste > 0 THEN
+        RAISE_APPLICATION_ERROR(-20001, 'La personne que vous souhaitez ajouter existe déjà');
+    END IF;
+
+    INSERT INTO Personne (noPersonne, nom, dateNaissance, lieuNaissance, photo, biographie)
+    VALUES (p_noPersonne,p_nom,p_dateNaissance,p_lieuNaissance,p_photo,p_biographie);
+END;
+/
+
 CREATE OR REPLACE PROCEDURE p_ajouterClient (
     p_idUsager     IN Usager.idUsager%TYPE,
     p_nom          IN Usager.nom%TYPE,
@@ -306,3 +330,13 @@ BEGIN
     END IF;
 END;
 /
+INSERT INTO Forfait (codeForfait, nomForfait, prix, locationMax, dureeMax)
+VALUES ('D', 'Débutant', 5, 1, 10);
+
+INSERT INTO Forfait (codeForfait, nomForfait, prix, locationMax, dureeMax)
+VALUES ('I', 'Intermédiaire', 10, 5, 30);
+
+INSERT INTO Forfait (codeForfait, nomForfait, prix, locationMax, dureeMax)
+VALUES ('A', 'Avancé', 15, 10, NULL);
+
+COMMIT;
