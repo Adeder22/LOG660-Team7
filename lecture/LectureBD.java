@@ -491,10 +491,10 @@ public class LectureBD {
 
         lecture.lecturePersonnes(args[0]);
         System.out.println("Insertion Personnes reussie.");
-      lecture.lectureFilms(args[1]);
-      System.out.println("Insertion Films reussie.");
-//        lecture.lectureClients(args[2]);
-//        System.out.println("Insertion Clients reussie.");
+        lecture.lectureFilms(args[1]);
+        System.out.println("Insertion Films reussie.");
+        lecture.lectureClients(args[2]);
+        System.out.println("Insertion Clients reussie.");
         long end = System.nanoTime();
         System.out.println("Temps : " + (end - start) / 1_000_000.0 + " ms");
         try {
