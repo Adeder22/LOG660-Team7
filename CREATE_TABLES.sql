@@ -163,7 +163,7 @@ CREATE TABLE Film_Scenariste (
 );
 
 CREATE TABLE Copie (
-    codeCopie NUMBER NOT NULL,
+    codeCopie NUMBER GENERATED ALWAYS AS IDENTITY,
     noFilm NUMBER NOT NULL,
     CONSTRAINT pk_copie PRIMARY KEY (codeCopie),
     CONSTRAINT fk_copie_film FOREIGN KEY (noFilm)
@@ -171,7 +171,7 @@ CREATE TABLE Copie (
 );
 
 CREATE TABLE Pret (
-    noPret NUMBER NOT NULL,
+    noPret NUMBER GENERATED ALWAYS AS IDENTITY,
     noUsager NUMBER NOT NULL,
     codeCopie NUMBER NOT NULL,
     dateDebut DATE NOT NULL,
@@ -391,6 +391,46 @@ BEGIN
     END IF;
     INSERT INTO Film_Scenariste(noFilm, nomScenariste)
     VALUES (p_noFilm, p_nomScenariste);
+END;
+/
+CREATE OR REPLACE PROCEDURE p_location (
+    p_noFilm    IN Film.noFilm%TYPe,
+   p_noUsager   IN Client.noUsager%TYPE
+) AS
+    v_clientExist       NUMBER;
+    v_filmExist         NUMBER;
+    v_codeCopie         Copie.codeCopie%TYPE;
+    v_dureeMax          Forfait.dureeMax%TYPE;
+    v_locationMax       Forfait.locationMax%TYPE;
+    v_locationEnCours      NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_filmExist FROM Film WHERE noFilm = p_noFilm;
+    IF (v_filmExist < 1) THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Le film à louer n''existe pas');
+    END IF;
+    SELECT COUNT(*) INTO v_clientExist FROM Client WHERE noUsager = p_noUsager;
+    IF (v_clientExist < 1) THEN
+        RAISE_APPLICATION_ERROR(-20005, 'Il n''existe pas de client');
+    END IF;
+    
+    SELECT f.locationMax, f.dureeMax INTO v_locationMax, v_dureeMax
+    FROM Client c
+    JOIN Forfait f ON f.codeForfait = c.codeForfait
+    WHERE c.noUsager = p_noUsager;
+    
+    --- Il y a une petite erreur dans le compte des location en cours, a cause du calcule des dates
+    SELECT COUNT(*) INTO v_locationEnCours FROM Pret WHERE noUsager = p_noUsager;
+    
+    IF (v_locationEnCours >= v_locationMax) THEN
+        RAISE_APPLICATION_ERROR(-20100, 'Le client ne peux pas faire plus de locaiton');
+    END IF;
+    
+    INSERT INTO Copie (noFilm)
+    VALUES (p_noFilm)
+    RETURNING codeCopie INTO v_codeCopie;
+    
+    INSERT INTO Pret (noUsager, codeCopie, dateDebut, dateRetour)
+    VALUES (p_noUsager, v_codeCopie, SYSDATE, SYSDATE + v_dureeMax);
 END;
 /
 INSERT INTO Forfait (codeForfait, nomForfait, prix, locationMax, dureeMax)
