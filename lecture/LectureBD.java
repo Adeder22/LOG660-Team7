@@ -369,7 +369,6 @@ public class LectureBD {
       }
       catch (SQLException e) {
          System.out.println("Insertion des clients impossible.");
-//         throw new IllegalStateException("Insertion des clients impossible.", e);
       }
    }   
    

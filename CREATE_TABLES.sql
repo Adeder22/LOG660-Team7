@@ -251,7 +251,7 @@ BEGIN
     END IF;
     
     INSERT INTO Usager (idUsager, nom, prenom, courriel, tel, anniversaire, motDePasse)
-    VALUES (p_idUsager, p_nom, p_prenom, p_courriel, p_tel, TO_DATE(p_anniversaire, 'yyyy-mm-dd'), p_motDePasse);
+    VALUES (p_idUsager, p_nom, p_prenom, p_courriel, p_tel, p_anniversaire, p_motDePasse);
 
     INSERT INTO Adresse (idUsager, noCiv, rue, ville, province, codePostal)
     VALUES (p_idUsager, p_noCiv, p_rue, p_ville, p_province, p_codePostal);
