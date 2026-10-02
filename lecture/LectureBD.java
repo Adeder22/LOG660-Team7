@@ -11,11 +11,25 @@ import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
 import org.xmlpull.v1.XmlPullParserFactory;
 
-
+/**
+ * Lit les fichiers XML de personnes, de films et de clients afin d'insérer
+ * leurs données dans la base de données.
+ */
 public class LectureBD {
     private Connection connection;
 
+    /**
+     * Représente le rôle joué par un acteur dans un film.
+     */
     public class Role {
+        /**
+         * Crée un rôle à partir de l'identifiant de l'acteur, de son nom et
+         * du personnage interprété.
+         *
+         * @param i identifiant de l'acteur
+         * @param n nom de l'acteur
+         * @param p nom du personnage interprété
+         */
         public Role(int i, String n, String p) {
             id = i;
             nom = n;
@@ -27,11 +41,20 @@ public class LectureBD {
         protected String personnage;
     }
 
+    /**
+     * Permet la connexion à la base de données.
+     */
     public LectureBD() {
         connectionBD();
     }
 
 
+    /**
+     * Lit un fichier XML de personnes et ajoute les personnes à la base de
+     * données.
+     *
+     * @param nomFichier chemin du fichier
+     */
     public void lecturePersonnes(String nomFichier) {
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -102,6 +125,12 @@ public class LectureBD {
         }
     }
 
+    /**
+     * Lit un fichier XML de films et insère les films ainsi que leurs données
+     * associées dans la base de données.
+     *
+     * @param nomFichier chemin du fichier
+     */
     public void lectureFilms(String nomFichier) {
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -223,6 +252,11 @@ public class LectureBD {
         }
     }
 
+    /**
+     * Lit un fichier XML de clients et ajoute les clients à la base de données.
+     *
+     * @param nomFichier chemin du fichier
+     */
     public void lectureClients(String nomFichier) {
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
@@ -251,6 +285,8 @@ public class LectureBD {
             int id = -1,
                     expMois = -1,
                     expAnnee = -1;
+
+            // Prepare le batch d'ajout du Client
             try (PreparedStatement batchStatement = connection.prepareCall(
                     "{call p_ajouterClient(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)}")) {
                 while (eventType != XmlPullParser.END_DOCUMENT) {
@@ -335,12 +371,26 @@ public class LectureBD {
         }
     }
 
+    /**
+     * Prépare l'insertion d'une personne dans la batch d'instructions.
+     *
+     * @param statement instruction utilisée pour l'insertion
+     * @param id identifiant de la personne
+     * @param nom nom de la personne
+     * @param anniv date de naissance
+     * @param lieu lieu de naissance
+     * @param photo référence de la photo
+     * @param bio biographie de la personne
+     * @throws SQLException si la préparation des valeurs ou l'ajout au lot échoue
+     */
     private void insertionPersonne(PreparedStatement statement, int id, String nom,
                                    String anniv, String lieu, String photo, String bio)
             throws SQLException {
         String bioRes = "";
-        if (bio != null && bio.length() > 4000) {
-            bioRes = bio.split("", 4001)[0];
+        if (bio != null && bio.length() >= 4000) {
+            bioRes = bio.trim().substring(0, 3899);
+        } else if (bio != null) {
+            bioRes = bio.trim();
         }
         statement.setInt(1, id);
         statement.setString(2, nom);
@@ -356,23 +406,25 @@ public class LectureBD {
     }
 
     /**
-     * Assure l'insertion des données liés au Film en appelant les procédures appropriées.
-     * @param statement
-     * @param id
-     * @param titre
-     * @param annee
-     * @param pays
-     * @param langue
-     * @param duree
-     * @param resume
-     * @param genres
-     * @param realisateurNom
-     * @param realisateurId
-     * @param scenaristes
-     * @param roles
-     * @param poster
-     * @param annonces
-     * @throws SQLException
+     * Insère un film et ses informations associées en appelant les procédures
+     * stockées appropriées.
+     *
+     * @param statement instruction préparée pour l'insertion du film
+     * @param id identifiant du film
+     * @param titre titre du film
+     * @param annee année de sortie
+     * @param pays pays de production du film
+     * @param langue langue originale du film
+     * @param duree durée du film en minutes
+     * @param resume résumé du film
+     * @param genres genres associés au film
+     * @param realisateurNom nom du réalisateur
+     * @param realisateurId identifiant du réalisateur
+     * @param scenaristes noms des scénaristes associés au film
+     * @param roles rôles des acteurs dans le film
+     * @param poster référence de l'affiche
+     * @param annonces références des bandes-annonces
+     * @throws SQLException si une insertion dans la base de données échoue
      */
     private void insertionFilm(PreparedStatement statement, int id, String titre, int annee,
                                ArrayList<String> pays, String langue, int duree, String resume,
@@ -445,6 +497,29 @@ public class LectureBD {
         System.out.println("Film ajouté: " + id);
     }
 
+    /**
+     * Insère un client dans le lot d'instructions SQL en séparant le numéro
+     * civique et le nom de rue de son adresse.
+     *
+     * @param statement instruction préparée utilisée pour l'insertion
+     * @param id identifiant du client
+     * @param nomFamille nom de famille du client
+     * @param prenom prénom du client
+     * @param courriel adresse courriel du client
+     * @param tel numéro de téléphone du client
+     * @param anniv date de naissance au format attendu par {@link Date#valueOf(String)}
+     * @param adresse adresse complète du client
+     * @param ville ville de résidence du client
+     * @param province province de résidence du client
+     * @param codePostal code postal du client
+     * @param carte type de carte de paiement
+     * @param noCarte numéro de la carte de paiement
+     * @param expMois mois d'expiration de la carte
+     * @param expAnnee année d'expiration de la carte
+     * @param motDePasse mot de passe du client
+     * @param forfait forfait d'abonnement du client
+     * @throws SQLException si l'insertion dans la base de données échoue
+     */
     private void insertionClient(PreparedStatement statement, int id, String nomFamille, String prenom,
                                  String courriel, String tel, String anniv,
                                  String adresse, String ville, String province,
@@ -454,11 +529,7 @@ public class LectureBD {
         String[] adresseSeparee = adresse.trim().split("\\s+", 2);
         int noCiv;
         String rue;
-        try {
-            noCiv = Integer.parseInt(adresseSeparee[0]);
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Adresse sans numéro civique: " + adresse, e);
-        }
+        noCiv = Integer.parseInt(adresseSeparee[0]);
         rue = adresseSeparee.length == 2 ? adresseSeparee[1] : "";
 
         statement.setInt(1, id);
@@ -486,6 +557,12 @@ public class LectureBD {
         System.out.println("Client ajouté au lot: " + id);
     }
 
+    /**
+     * Établit la connexion à la base de données.
+     *
+     * @throws IllegalStateException si le pilote Oracle est absent ou si la
+     *         connexion ne peut pas être établie
+     */
     private void connectionBD() {
         try {
             Class.forName("oracle.jdbc.OracleDriver");
@@ -501,6 +578,13 @@ public class LectureBD {
         }
     }
 
+    /**
+     * Lit les fichiers XML de personnes, de films et de clients,
+     * puis valide la transaction.
+     *
+     * @param args trois chemins de fichiers dans l'ordre suivant :
+     *             personnes, films et clients
+     */
     public static void main(String[] args) {
         if (args.length != 3) {
             System.err.println("Usage: java LectureBD <personnes.xml> <films.xml> <clients.xml>");
@@ -523,6 +607,5 @@ public class LectureBD {
         } catch (SQLException e) {
             throw new IllegalStateException("Connexion a la BD impossible.", e);
         }
-
     }
 }

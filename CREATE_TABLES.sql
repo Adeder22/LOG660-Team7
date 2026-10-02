@@ -18,7 +18,6 @@ DROP TABLE Usager CASCADE CONSTRAINTS;
 DROP TABLE Forfait CASCADE CONSTRAINTS;
 
 --- Creation de nos tables
---- Note: la colonne tel accepte uniquement le format suivant : 000-000-0000
 CREATE TABLE Usager (
     noUsager INTEGER NOT NULL,
     nom VARCHAR2(35) NOT NULL,
@@ -281,7 +280,6 @@ CREATE OR REPLACE PROCEDURE p_ajouterFilm (
     p_affiche         IN Film.affiche%TYPE
 ) AS
     v_filmExiste        NUMBER;
-    --v_realisateurExiste NUMBER;
 BEGIN
     SELECT COUNT(*) INTO v_filmExiste
     FROM Film
@@ -291,21 +289,10 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20101, 'Un film avec ce numéro existe déjà.');
     END IF;
 
-    --- à Vérifier, mais on accept un champ noRealisateur null dans la table Film
-    --SELECT COUNT(*) INTO v_realisateurExiste
-    --FROM Personne
-    --WHERE noPersonne = p_noRealisateur;
-
-    --IF v_realisateurExiste = 0 THEN
-    --   RAISE_APPLICATION_ERROR(-20102, 'Le réalisateur n''existe pas.');
-    --END IF;
-
     INSERT INTO Film (noFilm, titre, anneeSortie, langueOriginale, dureeMinutes,
                       noRealisateur, resumeScenario, affiche)
     VALUES (p_noFilm, p_titre, p_anneeSortie, p_langueOriginale, p_dureeMinutes,
             p_noRealisateur, p_resumeScenario, p_affiche);
-    INSERT INTO Copie (noFilm)
-    VALUES (p_noFilm);
 END;
 /
 CREATE OR REPLACE PROCEDURE p_ajouterFilmGenre (
@@ -419,8 +406,7 @@ BEGIN
     FROM Client c
     JOIN Forfait f ON f.codeForfait = c.codeForfait
     WHERE c.noUsager = p_noUsager;
-    
-    --- Il y a une petite erreur dans le compte des location en cours, a cause du calcule des dates
+
     SELECT COUNT(*) INTO v_locationEnCours FROM Pret WHERE noUsager = p_noUsager;
     
     IF (v_locationEnCours >= v_locationMax) THEN
