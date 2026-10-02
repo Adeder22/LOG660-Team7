@@ -355,6 +355,25 @@ public class LectureBD {
         System.out.println("Personne ajoutée au lot: " + id);
     }
 
+    /**
+     * Assure l'insertion des données liés au Film en appelant les procédures appropriées.
+     * @param statement
+     * @param id
+     * @param titre
+     * @param annee
+     * @param pays
+     * @param langue
+     * @param duree
+     * @param resume
+     * @param genres
+     * @param realisateurNom
+     * @param realisateurId
+     * @param scenaristes
+     * @param roles
+     * @param poster
+     * @param annonces
+     * @throws SQLException
+     */
     private void insertionFilm(PreparedStatement statement, int id, String titre, int annee,
                                ArrayList<String> pays, String langue, int duree, String resume,
                                ArrayList<String> genres, String realisateurNom, int realisateurId,
@@ -380,6 +399,7 @@ public class LectureBD {
         statement.setString(8, poster);
         statement.executeUpdate();
 
+        // Appelle les procédures liés aux tables associés à Film
         try (PreparedStatement genreStatement = connection.prepareCall(
                      "{call p_ajouterFilmGenre(?,?)}");
              PreparedStatement paysStatement = connection.prepareCall(

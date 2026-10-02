@@ -304,6 +304,8 @@ BEGIN
                       noRealisateur, resumeScenario, affiche)
     VALUES (p_noFilm, p_titre, p_anneeSortie, p_langueOriginale, p_dureeMinutes,
             p_noRealisateur, p_resumeScenario, p_affiche);
+    INSERT INTO Copie (noFilm)
+    VALUES (p_noFilm);
 END;
 /
 CREATE OR REPLACE PROCEDURE p_ajouterFilmGenre (
