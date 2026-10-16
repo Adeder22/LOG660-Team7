@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+<hibernate-configuration>
+    <session-factory>
+        <property name="hibernate.connection.driver_class">oracle.jdbc.OracleDriver</property>
+        <property name="hibernate.connection.url">jdbc:oracle:thin:@bdlog660.ens.ad.etsmtl.ca:1521/ORCLPDB1</property>
+        <property name="hibernate.connection.username">EQUIPE107</property>
+        <property name="hibernate.connection.password">Qg1C6326</property>
+
+        <property name="hibernate.dialect">org.hibernate.dialect.Oracle10gDialect</property>
+        <property name="hibernate.default_schema">EQUIPE107</property>
+        <property name="hibernate.transaction.auto_close_session">false</property>
+
+        <property name="hibernate.show_sql">true</property>
+        <property name="hibernate.format_sql">true</property>
+
+        <property name="hibernate.hbm2ddl.auto">validate</property>
+
+        <!-- Entités -->
+        <mapping class="com.log660.models.Adresse" />
+        <mapping class="com.log660.models.BandesAnnonce" />
+        <mapping class="com.log660.models.Cartecredit" />
+        <mapping class="com.log660.models.Client" />
+        <mapping class="com.log660.models.Copie" />
+        <mapping class="com.log660.models.Employe" />
+        <mapping class="com.log660.models.Film" />
+        <mapping class="com.log660.models.FilmActeur" />
+        <mapping class="com.log660.models.FilmGenre" />
+        <mapping class="com.log660.models.FilmPay" />
+        <mapping class="com.log660.models.FilmScenariste" />
+        <mapping class="com.log660.models.Forfait" />
+        <mapping class="com.log660.models.Genre" />
+        <mapping class="com.log660.models.PaysProduction" />
+        <mapping class="com.log660.models.Personne" />
+        <mapping class="com.log660.models.Pret" />
+        <mapping class="com.log660.models.Usager" />
+
+    </session-factory>
+</hibernate-configuration>
