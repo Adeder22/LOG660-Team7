@@ -3,6 +3,7 @@ package com.log660.facade;
 import com.log660.dao.ClientDAO;
 import com.log660.dao.FilmDAO;
 import com.log660.dto.ClientInfo;
+import com.log660.dto.DetailFilm;
 import com.log660.dto.FilmInfo;
 import com.log660.dto.SearchCriteria;
 
@@ -31,4 +32,6 @@ public class FacadeApplication {
     public List<FilmInfo> searchFilms(SearchCriteria criteria) {
         return filmDAO.search(criteria);
     }
+
+    public DetailFilm detailFilm(long noFilm) { return filmDAO.details(noFilm); }
 }

@@ -10,6 +10,9 @@ Three-tier film-rental app on Oracle, persistence through Hibernate (ORM). Team 
 - Java 8, Maven, Hibernate 4.3.1 (annotations, `javax.persistence`), Oracle (`ojdbc6`), `Oracle10gDialect`
 - DB: `bdlog660.ens.ad.etsmtl.ca:1521/ORCLPDB1`, schema `EQUIPE107` (ÉTS network / VPN required)
 - `hbm2ddl.auto=validate`: entity mappings must match the existing tables exactly
+- Mapping is done with **JPA annotations** in the entity classes (no `.hbm.xml`); `hibernate.cfg.xml` lists them with `<mapping class=...>`.
+  For the submission, "config/mapping files" = `hibernate.cfg.xml` + `models/`; say so in the report.
+- DB schema + PL/SQL (triggers, `p_ajouter*` procedures, `p_location`): `..\CREATE_TABLES.sql` (repo root, outside `Backend`).
 
 ## Architecture rules (graded)
 - Presentation → `FacadeApplication` (façade pattern) → DAO → Hibernate. Presentation never touches DAOs or entities directly.
@@ -25,21 +28,24 @@ Three-tier film-rental app on Oracle, persistence through Hibernate (ORM). Team 
 ## Project layout
 - `com.log660.models`: JPA entities (Usager, Client, Employe, Adresse, Cartecredit, Forfait, Film, Personne, Genre, PaysProduction, Copie, Pret, BandesAnnonce, Film* join entities)
 - `com.log660.dao`: `ClientDAO`, `FilmDAO`
-- `com.log660.dto`: `ClientInfo`, `FilmInfo`, `SearchCriteria`
+- `com.log660.dto`: `ClientInfo`, `FilmInfo`, `SearchCriteria`, `DetailFilm`, `ActeurInfo`
 - `com.log660.facade`: `FacadeApplication`
 - `org.example`: `HibernateUtil` (single SessionFactory), `Main` (console test entry point)
 - `src/main/resources/hibernate.cfg.xml`: connection, `default_schema=EQUIPE107`, entity mappings
 
-## Checkpoint (2026-10-14, end of day: film search done + English renaming)
+## Checkpoint (2026-10-16, end of day: film sheet done)
 
-### ⚠ REMINDER FOR NEXT SESSION (user request)
-- **The user wants an explanation of all the work Claude did on 2026-10-14** before going further: walk through each file and
-  the reasoning, so the user can verify and understand it. Files touched today: `dto/FilmInfo.java` (getters, `Short` types),
+### ⚠ REMINDERS FOR NEXT SESSION (user requests)
+- **Review the SQL code of the rental procedure.** The user must read `p_location` in `..\CREATE_TABLES.sql` (line ~385)
+  to verify it and fix it. It is tied to the planned `COPIE` / `PRET` rework (see To do) and to use case 4.
+- **Still pending from 2026-10-14: the user wants an explanation of the work Claude did on 2026-10-14** before going further: walk through each file and
+  the reasoning, so the user can verify and understand it. Files: `dto/FilmInfo.java` (getters, `Short` types),
   `dto/SearchCriteria.java` (new), `dao/FilmDAO.java` (`search`, `addContent`, `isNotEmpty`), `dao/ClientDAO.java` and
   `facade/FacadeApplication.java` (English renaming + `searchFilms`), `org/example/Main.java` (renamed calls), `CLAUDE.md`.
   Topics to cover: dynamic HQL with `where 1 = 1` (a list + `String.join` version was tried and reverted by the user for readability),
   word split for "pas nécessairement en ordre", `exists` subqueries vs joins, repeated criteria with indexed aliases/parameters,
   named parameters and SQL injection, `left join` on the director, `select new` constructor types (`Short` for `NUMBER(4,0)`).
+  The 2026-10-16 film-sheet work (below) can be explained at the same time.
 
 ### Done
 - Hibernate config + entity mappings for all tables; connection verified.
@@ -60,20 +66,31 @@ Three-tier film-rental app on Oracle, persistence through Hibernate (ORM). Team 
   - No input validation in DTO/DAO/façade by user's choice (see Servlet note below).
   - `Main` tests the search (`king lion`, 1990–2000, Animation → The Lion King (1994)).
     It checks `films == null`, which never happens (`search` returns an empty list); use `films.isEmpty()` for the "no film found" message.
-  - Names: classes/methods/variables renamed to English today (`SearchCriteria`, `search`, `searchFilms`, `login`, `authenticate`,
-    `addActor/addGenre/addCountry`, `addContent`, `isNotEmpty`). Javadoc comments and HQL parameter names are still in French.
+- **Use case 3, film sheet (DAO + façade).** `FacadeApplication.detailFilm(long noFilm)` (added by the user) → `FilmDAO.details` → `DetailFilm`, or `null` if no such film.
+  - `DetailFilm` (dto): `final` simple fields filled by `select new` (noFilm, titre, anneeSortie, langueOriginale, dureeMinutes,
+    **noRealisateur** + nomRealisateur, resumeScenario, affiche) + lists set afterwards (`pays`, `genres`, `scenaristes`, `acteurs`, `bandesAnnonces` = URLs), empty by default.
+  - `ActeurInfo` (dto): noPersonne, nom, personnage. One entry per role (an actor with two characters appears twice: `PERSONNAGE` is in the `FILM_ACTEURS` key).
+    `noPersonne` / `noRealisateur` are kept for the future person sheet.
+  - One `Session`, 6 HQL queries bound with `:noFilm`: the `select new DetailFilm` on `Film f left join f.norealisateur r`, then one query per list
+    (`FilmPay`, `FilmGenre`, `FilmScenariste`, `FilmActeur join nopersonne`, `BandesAnnonce`, reading the embedded ids `x.id.…`), each sorted.
+    One query per list instead of one big join, to avoid the cartesian product (justify in report).
+  - `Main` prints the sheet of film 119190 (George of the Jungle) through the façade.
+  - Verified against the DB for 119190, 120755, 117913, 75314, 65214, 120915: every list count matches a raw SQL `count(*)` on the join table.
+  - **Data issues found (not code bugs, from the TP1 insertion):**
+    - Accents corrupted in the DB: stored as `EF BF BD` (U+FFFD, `DUMP()` confirmed, DB is `AL32UTF8`); 84 `PERSONNE.NOM` affected
+      (e.g. "Emilio Fernández", "Padmé Amidala"), probably other text columns too. Fix = re-run the insertion with the right encoding.
+    - Taxi Driver (75314) has trailers of *Gangs of New York* / *Bringing Out the Dead*. The Wild Bunch (65214) has language "German".
+  - Running outside IntelliJ with a JDK newer than 8 logs `HHH000142 Javassist Enhancement failed` (harmless); `--add-opens java.base/java.lang=ALL-UNNAMED` silences it.
 
 ### In progress
-- **Use case 3, film sheet.** Not started. Needs `details(noFilm)` + a richer DTO: title, year, all countries, language, duration, all genres, director,
-  all writers, all actors + characters, summary, poster, all trailer links. Clicking director/actor → name, birth date, birth place, photo, biography.
-  `Film` has no collections; query via the join entities (`FilmGenre`, `FilmActeur`, `FilmPay`, `FilmScenariste`, `BandesAnnonce`).
+- **Use case 3, person sheet.** Clicking director/actor → name, birth date, birth place, photo, biography (`Personne`), from `noRealisateur` / `ActeurInfo.noPersonne`.
 - Use case 3 presentation (later, in the thin client): format results as `Titre (année)`; error message when the list is empty.
 
 ### To do
 - **Use case 4: rental.** Rent from the film sheet only if a copy is available AND the client's current rentals < `Forfait.locationmax`
   (D=1/10 days, I=5/30 days, A=10/unlimited). Distinct meaningful error messages. Inside a transaction.
 - **Rework `COPIE` / `PRET` schema** (planned by user): no way today to tell an available copy from a rented one
-  (`Copie` has no status, `Pret.dateretour` is NOT NULL). Fix before use case 4.
+  (`Copie` has no status, `Pret.dateretour` is NOT NULL). Fix before use case 4, together with `p_location` (see reminder).
 - **Key generation:** `Copie` and `Pret` use `GenerationType.IDENTITY`, which `Oracle10gDialect` doesn't support; switch to native (`AUTO` + sequence).
 - **Thin client (Task 3):** servlet web app (course skeleton + "Application Web et Servlet Java" guide) on Tomcat, or a Swing GUI.
   Store `ClientInfo` in `HttpSession` after login. Needs `pom.xml` changes (`war` packaging, Servlet API dependency).
@@ -82,5 +99,7 @@ Three-tier film-rental app on Oracle, persistence through Hibernate (ORM). Team 
     not in DTO/DAO/façade.
 - **`pom.xml` cleanup:** `marven.compiler.*` typo (should be `maven.compiler.*`); stray `<property name="hibernate.dialect">` inside `<properties>`.
   Maven isn't on PATH (IntelliJ's bundled one is at `C:/Program Files/JetBrains/IntelliJ IDEA 2026.2.3/plugins/maven-plugin/lib/maven3/bin/mvn`).
-- **Report (Task 4):** fill the course template, justify design decisions (repeatable criteria only for multi-valued ones, `exists` vs join, word split, injection protection).
+- **Security note:** the DB password is in plain text in `hibernate.cfg.xml`, which is committed; don't make the repo public.
+- **Report (Task 4):** fill the course template, justify design decisions (repeatable criteria only for multi-valued ones, `exists` vs join, word split,
+  injection protection, annotation mapping, one query per list for the film sheet) and mention the data issues above.
 - Submission: `log660-labo2-equipe107` archive with report, config/mapping files and source code.
