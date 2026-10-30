@@ -1,3 +1,4 @@
+// Ader Alisma
 import java.io.FileInputStream;
 import java.io.IOException;
 
@@ -6,6 +7,7 @@ import java.io.InputStream;
 import java.sql.*;
 
 import java.util.ArrayList;
+import java.util.Random;
 
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserException;
@@ -453,7 +455,7 @@ public class LectureBD {
 
         // Appelle les procédures liés aux tables associés à Film
         try (PreparedStatement genreStatement = connection.prepareCall(
-                     "{call p_ajouterFilmGenre(?,?)}");
+                "{call p_ajouterFilmGenre(?,?)}");
              PreparedStatement paysStatement = connection.prepareCall(
                      "{call p_ajouterFilmPays(?,?)}");
              PreparedStatement annonceStatement = connection.prepareCall(
@@ -579,19 +581,43 @@ public class LectureBD {
     }
 
     /**
+     * Insère entre 1 et 10 copies pour chaque film présent dans la base de
+     * données.
+     *
+     * @throws SQLException si l'insertion des copies échoue
+     */
+    private void insertionCopies() throws SQLException {
+        String requeteFilms = "SELECT noFilm FROM Film";
+        String requeteCopie = "INSERT INTO Copie (noFilm) VALUES (?)";
+        Random random = new Random();
+
+        try (PreparedStatement filmStatement = connection.prepareStatement(requeteFilms);
+             ResultSet films = filmStatement.executeQuery();
+             PreparedStatement copieStatement = connection.prepareStatement(requeteCopie)) {
+            while (films.next()) {
+                int nombreCopies = random.nextInt(1, 11);
+                for (int i = 0; i < nombreCopies; i++) {
+                    copieStatement.setInt(1, films.getInt("noFilm"));
+                    copieStatement.addBatch();
+                }
+            }
+            copieStatement.executeBatch();
+        }
+    }
+
+    /**
      * Lit les fichiers XML de personnes, de films et de clients,
      * puis valide la transaction.
      *
      * @param args trois chemins de fichiers dans l'ordre suivant :
      *             personnes, films et clients
      */
-    public static void main(String[] args) {
+    public static void main(String[] args) throws SQLException {
         if (args.length != 3) {
             System.err.println("Usage: java LectureBD <personnes.xml> <films.xml> <clients.xml>");
             System.exit(1);
         }
         LectureBD lecture = new LectureBD();
-        long start = System.nanoTime();
 
         lecture.lecturePersonnes(args[0]);
         System.out.println("Insertion Personnes reussie.");
@@ -599,8 +625,7 @@ public class LectureBD {
         System.out.println("Insertion Films reussie.");
         lecture.lectureClients(args[2]);
         System.out.println("Insertion Clients reussie.");
-        long end = System.nanoTime();
-        System.out.println("Temps : " + (end - start) / 1_000_000.0 + " ms");
+        lecture.insertionCopies();
         try {
             lecture.connection.commit();
             lecture.connection.close();

@@ -1,6 +1,8 @@
 package org.example;
 
+import com.log660.dto.ActeurInfo;
 import com.log660.dto.ClientInfo;
+import com.log660.dto.DetailFilm;
 import com.log660.dto.FilmInfo;
 import com.log660.dto.SearchCriteria;
 import com.log660.facade.FacadeApplication;
@@ -24,7 +26,7 @@ public class Main {
             }
 
             SearchCriteria criteria = new SearchCriteria();
-            criteria.setTitre("king lion");             // words in any order
+            criteria.setTitre("king lion");
             criteria.setAnneeMin((short) 1990);
             criteria.setAnneeMax((short) 2000);
             criteria.addGenre("Animation");
@@ -38,6 +40,29 @@ public class Main {
                     System.out.println(film.getTitre() + " (" + film.getAnneeSortie() + ")");
                 }
             }
+
+            DetailFilm detail = new FacadeApplication().detailFilm(119190);
+
+            if (detail == null) {
+                System.out.println("Aucun film ne correspond à ce numéro.");
+            } else {
+                System.out.println("Titre : " + detail.getTitre());
+                System.out.println("Année de sortie : " + detail.getAnneeSortie());
+                System.out.println("Pays de production : " + String.join(", ", detail.getPays()));
+                System.out.println("Langue originale : " + detail.getLangueOriginale());
+                System.out.println("Durée : " + detail.getDureeMinutes() + " minutes");
+                System.out.println("Genres : " + String.join(", ", detail.getGenres()));
+                System.out.println("Réalisateur : " + detail.getNomRealisateur());
+                System.out.println("Scénaristes : " + String.join(", ", detail.getScenaristes()));
+                System.out.println("Acteurs :");
+                for (ActeurInfo acteur : detail.getActeurs()) {
+                    System.out.println("  " + acteur.getNom() + " (" + acteur.getPersonnage() + ")");
+                }
+                System.out.println("Résumé : " + detail.getResumeScenario());
+                System.out.println("Affiche : " + detail.getAffiche());
+                System.out.println("Bandes-annonces : " + String.join(", ", detail.getBandesAnnonces()));
+            }
+
         } finally {
             HibernateUtil.getSessionFactory().close();
         }

@@ -1,5 +1,6 @@
 package com.log660.dao;
 
+import com.log660.dto.DetailFilm;
 import com.log660.dto.FilmInfo;
 import com.log660.dto.SearchCriteria;
 import org.example.HibernateUtil;
@@ -92,6 +93,62 @@ public class FilmDAO {
                 query.setParameter(parameter.getKey(), parameter.getValue());
             }
             return query.list();
+        } finally {
+            session.close();
+        }
+    }
+
+    /**
+     * Retourne les détails d'un film, y compris titre, année sortie, noms de tous les pays de production
+     * lange originale, durée du film, liste de tous les genres, nom du réalisateur, noms de tous les scénaristes,
+     * noms de tous les acteurs et leur(s) personnages, résumé du scénario, l'affiche et le lien vers toutes les bandes-annonces
+     * à partir de l'id du film.
+     * Retourne null si aucun film ne porte ce numéro.
+     */
+    @SuppressWarnings("unchecked")
+    public DetailFilm details(long noFilm) {
+        Session session = HibernateUtil.getSessionFactory().openSession();
+        try {
+            DetailFilm detail = (DetailFilm) session.createQuery(
+                    "select new com.log660.dto.DetailFilm(f.id, f.titre, f.anneesortie, f.langueoriginale, " +
+                    "f.dureeminutes, r.id, r.nom, f.resumescenario, f.affiche) " +
+                    "from Film f left join f.norealisateur r " +
+                    "where f.id = :noFilm")
+                    .setParameter("noFilm", noFilm)
+                    .uniqueResult();
+            if (detail == null) {
+                return null;
+            }
+
+            detail.setPays(session.createQuery(
+                    "select fp.id.nompays from FilmPay fp where fp.id.nofilm = :noFilm order by fp.id.nompays")
+                    .setParameter("noFilm", noFilm)
+                    .list());
+
+            detail.setGenres(session.createQuery(
+                    "select fg.id.typegenre from FilmGenre fg where fg.id.nofilm = :noFilm order by fg.id.typegenre")
+                    .setParameter("noFilm", noFilm)
+                    .list());
+
+            detail.setScenaristes(session.createQuery(
+                    "select fs.id.nomscenariste from FilmScenariste fs where fs.id.nofilm = :noFilm " +
+                    "order by fs.id.nomscenariste")
+                    .setParameter("noFilm", noFilm)
+                    .list());
+
+            detail.setActeurs(session.createQuery(
+                    "select new com.log660.dto.ActeurInfo(p.id, p.nom, fa.id.personnage) " +
+                    "from FilmActeur fa join fa.nopersonne p " +
+                    "where fa.id.nofilm = :noFilm order by p.nom, fa.id.personnage")
+                    .setParameter("noFilm", noFilm)
+                    .list());
+
+            detail.setBandesAnnonces(session.createQuery(
+                    "select ba.id.url from BandesAnnonce ba where ba.id.nofilm = :noFilm order by ba.id.url")
+                    .setParameter("noFilm", noFilm)
+                    .list());
+
+            return detail;
         } finally {
             session.close();
         }

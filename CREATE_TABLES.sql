@@ -1,3 +1,4 @@
+--- Samuel Rondeau
 --- Remove table before creating them
 DROP TABLE Pret CASCADE CONSTRAINTS;
 DROP TABLE Copie CASCADE CONSTRAINTS;
@@ -174,7 +175,7 @@ CREATE TABLE Pret (
     noUsager NUMBER NOT NULL,
     codeCopie NUMBER NOT NULL,
     dateDebut DATE NOT NULL,
-    dateRetour DATE NOT NULL,
+    dateRetour DATE,
     CONSTRAINT pk_pret PRIMARY KEY (noPret),
     CONSTRAINT fk_pret_client FOREIGN KEY (noUsager)
         REFERENCES Client(noUsager),
@@ -413,9 +414,21 @@ BEGIN
         RAISE_APPLICATION_ERROR(-20100, 'Le client ne peux pas faire plus de locaiton');
     END IF;
     
-    INSERT INTO Copie (noFilm)
-    VALUES (p_noFilm)
-    RETURNING codeCopie INTO v_codeCopie;
+    BEGIN
+        SELECT c.codeCopie INTO v_codeCopie
+        FROM Copie c
+        WHERE c.noFilm = p_noFilm
+          AND NOT EXISTS (
+              SELECT 1
+              FROM Pret p
+              WHERE p.codeCopie = c.codeCopie
+          )
+          AND ROWNUM = 1
+        FOR UPDATE;
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20101, 'Aucune copie disponible pour ce film');
+    END;
     
     INSERT INTO Pret (noUsager, codeCopie, dateDebut, dateRetour)
     VALUES (p_noUsager, v_codeCopie, SYSDATE, SYSDATE + v_dureeMax);
