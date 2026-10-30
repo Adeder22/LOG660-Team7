@@ -26,7 +26,7 @@ public class Pret {
     private Date datedebut;
 
     @Temporal(TemporalType.DATE)
-    @Column(name = "DATERETOUR", nullable = false)
+    @Column(name = "DATERETOUR")
     private Date dateretour;
 
     public Long getId() {

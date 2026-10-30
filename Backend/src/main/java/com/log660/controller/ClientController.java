@@ -1,7 +1,9 @@
 package com.log660.controller;
 
 import com.log660.dto.*;
+import com.log660.exception.RentalException;
 import com.log660.facade.FacadeApplication;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -49,5 +51,24 @@ public class ClientController {
     public ResponseEntity<DetailFilm> detailFilm(
             @RequestParam Long id) {
         return ResponseEntity.ok(application.detailFilm(id));
+    }
+
+    /**
+     * Loue un film pour le client connecté.
+     *
+     * @param noUsager Identifiant du client connecté.
+     * @param noFilm   Identifiant du film à louer.
+     * @return Message de confirmation, ou message d'erreur (409) si la location est refusée.
+     */
+    @PostMapping("/rentFilm")
+    public ResponseEntity<String> rentFilm(
+            @RequestParam Long noUsager,
+            @RequestParam Long noFilm) {
+        try {
+            application.rentFilm(noUsager, noFilm);
+            return ResponseEntity.ok("Location réussie.");
+        } catch (RentalException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+        }
     }
 }

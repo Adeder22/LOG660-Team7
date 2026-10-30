@@ -33,8 +33,8 @@ public class Main {
 
             List<FilmInfo> films = new FacadeApplication().searchFilms(criteria);
 
-            if (films == null) {
-                System.out.println("Problème survenue lors de la recherche");
+            if (films.isEmpty()) {
+                System.out.println("Aucun film ne correspond aux critères de recherche.");
             } else {
                 for (FilmInfo film : films) {
                     System.out.println(film.getTitre() + " (" + film.getAnneeSortie() + ")");
