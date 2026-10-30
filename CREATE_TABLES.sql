@@ -175,7 +175,7 @@ CREATE TABLE Pret (
     noUsager NUMBER NOT NULL,
     codeCopie NUMBER NOT NULL,
     dateDebut DATE NOT NULL,
-    dateRetour DATE NOT NULL,
+    dateRetour DATE,
     CONSTRAINT pk_pret PRIMARY KEY (noPret),
     CONSTRAINT fk_pret_client FOREIGN KEY (noUsager)
         REFERENCES Client(noUsager),
